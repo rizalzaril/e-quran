@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Daftar Surat Al-Qur'an</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f8f9fa;
+      }
+      .surah-card {
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      .surah-card:hover {
+        transform: scale(1.02);
+      }
+
+      body.dark-mode {
+        background-color: #121212;
+        color: #f1f1f1;
+      }
+
+      .dark-mode .card {
+        background-color: #1e1e1e;
+        color: #f1f1f1;
+        border-color: #333;
+      }
+
+      .dark-mode .modal-content {
+        background-color: #1e1e1e;
+        color: #f1f1f1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="d-flex justify-content-end mb-3 me-3 mt-3">
+      <button id="toggleDarkMode" class="btn btn-outline-dark">
+        🌙 Dark Mode
+      </button>
+    </div>
+
+    <div class="container py-5">
+      <h1 class="text-center mb-4">📖 Daftar Surat Al-Qur'an</h1>
+      <div class="row" id="surat-list"></div>
+    </div>
+
+    <!-- Modal -->
+    <div
+      class="modal fade"
+      id="suratModal"
+      tabindex="-1"
+      aria-labelledby="suratModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header flex-column align-items-start">
+            <h5 class="modal-title" id="suratModalLabel">Detail Surat</h5>
+            <div id="audioContainer" class="w-100 mt-2 mb-2"></div>
+            <button
+              type="button"
+              class="btn-close position-absolute top-0 end-0 mt-3 me-3"
+              data-bs-dismiss="modal"
+              aria-label="Tutup"
+            ></button>
+          </div>
+          <div class="modal-body" id="modal-content">
+            <p>Memuat...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const suratList = document.getElementById("surat-list");
+      const modalContent = document.getElementById("modal-content");
+      const audioContainer = document.getElementById("audioContainer");
+      const suratModal = new bootstrap.Modal(
+        document.getElementById("suratModal")
+      );
+
+      fetch("https://equran.id/api/v2/surat")
+        .then((res) => res.json())
+        .then((res) => {
+          res.data.forEach((surat) => {
+            const card = document.createElement("div");
+            card.className = "col-md-4 mb-4";
+            card.innerHTML = `
+              <div class="card shadow-sm surah-card" onclick="showSurat(${surat.nomor})">
+                <div class="card-body">
+                  <h5 class="card-title">${surat.nomor}. ${surat.namaLatin} (${surat.nama})</h5>
+                  <p class="card-text text-muted">${surat.arti} - ${surat.jumlahAyat} Ayat - ${surat.tempatTurun}</p>
+                </div>
+              </div>`;
+            suratList.appendChild(card);
+          });
+        });
+
+      function showSurat(nomor) {
+        modalContent.innerHTML = "<p>Memuat ayat...</p>";
+        audioContainer.innerHTML = ""; // Kosongkan audioContainer terlebih dahulu
+        fetch(`https://equran.id/api/v2/surat/${nomor}`)
+          .then((res) => res.json())
+          .then((res) => {
+            const data = res.data;
+
+            // Tambahkan audioFull di bagian atas modal
+            audioContainer.innerHTML = `
+              <audio controls class="w-100">
+                <source src="${
+                  Object.values(data.audioFull)[0]
+                }" type="audio/mpeg">
+
+                Browser Anda tidak mendukung pemutar audio.
+              </audio>
+            `;
+
+            let html = `
+              <h3>${data.namaLatin} (${data.nama})</h3>
+              <p class="text-muted">${data.arti} - ${data.jumlahAyat} Ayat - ${data.tempatTurun}</p>
+              <p>${data.deskripsi}</p>
+              <hr>
+            `;
+
+            data.ayat.forEach((ayat) => {
+              html += `
+                <div class="mb-4">
+                  <h5>Ayat ${ayat.nomorAyat}</h5>
+                  <p class="fs-4">${ayat.teksArab}</p>
+                  <p><strong>Latin:</strong> ${ayat.teksLatin}</p>
+                  <p><strong>Terjemah:</strong> ${ayat.teksIndonesia}</p>
+                  <audio controls class="w-100">
+                    <source src="${ayat.audio["01"]}" type="audio/mpeg">
+                    Browser tidak mendukung audio
+                  </audio>
+                  <hr>
+                </div>
+              `;
+            });
+
+            modalContent.innerHTML = html;
+            suratModal.show();
+          });
+      }
+
+      // Dark Mode Toggle
+      const toggleBtn = document.getElementById("toggleDarkMode");
+
+      function setDarkMode(active) {
+        if (active) {
+          document.body.classList.add("dark-mode");
+          toggleBtn.innerHTML = "☀️ Light Mode";
+          localStorage.setItem("theme", "dark");
+        } else {
+          document.body.classList.remove("dark-mode");
+          toggleBtn.innerHTML = "🌙 Dark Mode";
+          localStorage.setItem("theme", "light");
+        }
+      }
+
+      toggleBtn.addEventListener("click", () => {
+        const isDark = document.body.classList.contains("dark-mode");
+        setDarkMode(!isDark);
+      });
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark") {
+          setDarkMode(true);
+        }
+      });
+    </script>
+  </body>
+</html>
